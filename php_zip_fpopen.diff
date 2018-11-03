@@ -1,0 +1,115 @@
+diff -X exclude -r php5/php5-5.2.6.dfsg.1/ext/standard/file.c php5_3/php5-5.2.6.dfsg.1/ext/standard/file.c
+135,140d134
+< #define PHP_STREAM_TO_ZVAL(stream, arg) \
+< 	php_stream_from_zval_no_verify(stream, arg); \
+< 	if (stream == NULL) {	\
+< 		RETURN_FALSE;	\
+< 	}
+< 
+diff -X exclude -r php5/php5-5.2.6.dfsg.1/ext/standard/file.h php5_3/php5-5.2.6.dfsg.1/ext/standard/file.h
+134a135,140
+> #define PHP_STREAM_TO_ZVAL(stream, arg) \
+> 	php_stream_from_zval_no_verify(stream, arg); \
+> 	if (stream == NULL) {	\
+> 		RETURN_FALSE;	\
+> 	}
+> 
+diff -X exclude -r php5/php5-5.2.6.dfsg.1/ext/zip/lib/zip.h php5_3/php5-5.2.6.dfsg.1/ext/zip/lib/zip.h
+193a194
+> PHPZIPAPI struct zip *zip_fpopen(FILE *, int, int *);
+diff -X exclude -r php5/php5-5.2.6.dfsg.1/ext/zip/lib/zip_open.c php5_3/php5-5.2.6.dfsg.1/ext/zip/lib/zip_open.c
+65,66d64
+<     unsigned char *buf, *match;
+<     int a, i, buflen, best;
+68,69d65
+<     struct zip_cdir *cdir, *cdirnew;
+<     long len;
+71c67
+<     struct zip_error error, err2;
+---
+>     struct zip_error error;
+102c98
+< 
+---
+>     
+109a106,128
+>     za = zip_fpopen(fp, flags, zep);
+> 
+>     if ((za->zn=strdup(fn)) == NULL) {
+> 	set_error(zep, NULL, ZIP_ER_MEMORY);
+> 	_zip_free(za);
+> 	return NULL;
+>     }
+> 
+>     return za;
+> }
+> 
+> 
+> PHPZIPAPI struct zip *
+> zip_fpopen(FILE *fp, int flags, int *zep)
+> {
+>     unsigned char *buf, *match;
+>     int buflen, best;
+>     struct zip_cdir *cdir, *cdirnew;
+>     int a, i;
+>     long len;
+>     struct zip_error error, err2;
+>     struct zip *za;
+> 
+204,209d222
+<     if ((za->zn=strdup(fn)) == NULL) {
+< 	set_error(zep, NULL, ZIP_ER_MEMORY);
+< 	_zip_free(za);
+< 	return NULL;
+<     }
+< 
+diff -X exclude -r php5/php5-5.2.6.dfsg.1/ext/zip/php_zip.c php5_3/php5-5.2.6.dfsg.1/ext/zip/php_zip.c
+35a36
+> static PHP_NAMED_FUNCTION(zif_zip_fpopen);
+277a279
+> 	ZEND_RAW_FENTRY("zip_fpopen", zif_zip_fpopen, NULL, 0)
+709a712,747
+> /* {{{ proto resource zip_fpopen(resource fp)
+> Create new zip using fp for output */
+> static PHP_NAMED_FUNCTION(zif_zip_fpopen)
+> {
+> 	/* Get parameters like fread ext/standard/file.c fread() */
+> 	zval **arg1;
+> 	php_stream *stream;
+> 	zip_rsrc *rsrc_int;
+> 	int err = 0;
+> 	FILE * fp;
+> 
+> 	if (ZEND_NUM_ARGS() != 1 || zend_get_parameters_ex(1, &arg1) == FAILURE) {
+> 		WRONG_PARAM_COUNT;
+> 	}
+> 
+> 	PHP_STREAM_TO_ZVAL(stream, arg1);  // implicit, moved from file.c to file.h
+> 	if (FAILURE == php_stream_cast(stream, PHP_STREAM_AS_STDIO, (void**)&fp, REPORT_ERRORS))
+> 		{
+> 		php_stream_close(stream);
+> 		RETURN_FALSE;
+> 		}
+> 
+> 	rsrc_int = (zip_rsrc *)emalloc(sizeof(zip_rsrc));
+> 	rsrc_int->za = zip_fpopen(fp, 0, &err);
+> 	if (rsrc_int->za == NULL) {
+> 		efree(rsrc_int);
+> 		RETURN_LONG((long)err);
+> 	}
+> 
+> 	rsrc_int->index_current = 0;
+> 	rsrc_int->num_files = zip_get_num_files(rsrc_int->za);
+> 
+> 	ZEND_REGISTER_RESOURCE(return_value, rsrc_int, le_zip_dir);
+> }
+> /* }}} */
+> 
+diff -X exclude -r php5/php5-5.2.6.dfsg.1/.pc/CVE-2010-1917.patch/ext/standard/file.c php5_3/php5-5.2.6.dfsg.1/.pc/CVE-2010-1917.patch/ext/standard/file.c
+135,140d134
+< #define PHP_STREAM_TO_ZVAL(stream, arg) \
+< 	php_stream_from_zval_no_verify(stream, arg); \
+< 	if (stream == NULL) {	\
+< 		RETURN_FALSE;	\
+< 	}
+< 
